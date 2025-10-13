@@ -64,12 +64,31 @@ class Enemy:
         distance = m.sqrt((self.x - bullet.x) ** 2 + (self.y - bullet.y) ** 2)
         return distance < (self.width // 2 + bullet.radius)
 
+class Bullet:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.radius = 5
+        self.speed = 7
+        self.color = BLUE
+
+    def draw(self, screen):
+        pg.draw.circle(screen, self.color, (self.x, self.y), self.radius)
+
+    def move(self):
+        self.y -= self.speed
+
+    def off_screen(self):
+        return self.y < 0
+
+
 clock = pg.time.Clock()
 player = Player()
-enemys = []
+enemies = []
+bullets = []
 timer = 0
 score = 0
-
+font = pg.font.SysFont("Arial", 36)
 
 is_run = True
 while is_run:
@@ -77,25 +96,56 @@ while is_run:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             is_run = False
+        if event.type == pg.KEYDOWN:
+            if event.key == pg.K_SPACE:
+                bullets.append(Bullet(player.x, player.y - player.height // 2))
 
     timer += 1
     if timer >= 60:
         timer = 0
-        enemys.append(Enemy())
+        enemies.append(Enemy())
 
-    for enemy in enemys:
+    for enemy in enemies[:]:
         enemy.move()
-        enemy.draw(window)
         if enemy.off_screen():
-            enemys.remove(enemy)
+            enemies.remove(enemy)
             player.hp -= 10
+
+    for bullet in bullets[:]:
+        bullet.move()
+        if bullet.off_screen():
+            bullets.remove(bullet)
+
+    for bullet in bullets[:]:
+        for enemy in enemies[:]:
+            if enemy.collides_with(bullet):
+                if bullet in bullets:
+                    bullets.remove(bullet)
+                if enemy in enemies:
+                    enemies.remove(enemy)
+                score += 10
+                break
+
+    if player.hp <= 0:
+        is_run = False
 
     keys = pg.key.get_pressed()
     player.move(keys)
 
-    player.draw(window)
-    
+    for bullet in bullets:
+        bullet.draw(window)
 
-    
+    for enemy in enemies:
+        enemy.draw(window)
+
+    player.draw(window)
+
+    score_text = font.render(f"Счёт: {score}", True, WHITE)
+    window.blit(score_text, (10, 10))
+
+    hp_text = font.render(f"HP: {player.hp}", True, WHITE)
+    window.blit(hp_text, (10, 50))
+
+
     clock.tick(60)
     pg.display.update()
